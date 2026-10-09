@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Case Game</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --text-color: #ffffff;
+            --text-secondary: #94a3b8;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            padding-bottom: 70px;
+        }
+        header {
+            background: #1e293b;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #334155;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .balance-box {
+            font-size: 16px;
+            font-weight: bold;
+            color: #38bdf8;
+        }
+        .container {
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* Навигация */
+        nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #1e293b;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            border-top: 1px solid #334155;
+            z-index: 100;
+        }
+        .nav-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        .nav-btn.active { color: var(--accent); }
+        .nav-btn span { font-size: 20px; }
+
+        /* Рулетка */
+        .wheel-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+        .spin-btn {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 12px;
+            cursor: pointer;
+            margin-top: 20px;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+            width: 100%;
+        }
+        .spin-btn:active { transform: scale(0.98); }
+        
+        .drop-result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 12px;
+            background: #0f172a;
+            border: 1px dashed #334155;
+        }
+
+        /* Инвентарь */
+        .inventory-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+        .item-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 15px;
+            position: relative;
+            border: 1px solid #334155;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .rarity-common { border-color: #64748b; }
+        .rarity-rare { border-color: #3b82f6; }
+        .rarity-epic { border-color: #a855f7; }
+        .rarity-legendary { border-color: #eab308; }
+
+        .item-name { font-weight: bold; font-size: 15px; margin-bottom: 5px; }
+        .item-info { font-size: 12px; color: var(--text-secondary); margin-bottom: 10px; }
+        .sell-btn {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        /* Магазин доната */
+        .donate-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+        .donate-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            border: 1px solid #334155;
+        }
+        .donate-amount { font-size: 18px; font-weight: bold; color: #38bdf8; margin-bottom: 5px; }
+        .buy-btn {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 10px 0;
+            width: 100%;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        /* Модальное окно QR */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 16px;
+            text-align: center;
+            max-width: 300px;
+            width: 90%;
+        }
+        .qr-box {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 15px 0;
+            cursor: pointer;
+            display: inline-block;
+        }
+        .qr-box img { width: 150px; height: 150px; display: block; }
+        
+        .success-checkmark {
+            display: none;
+            font-size: 50px;
+            color: #10b981;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div>🎮 Mini App Game</div>
+        <div class="balance-box">💰 <span id="balance">500</span> монет</div>
+    </header>
+
+    <div class="container">
+        <!-- Вкладка 1: Рулетка -->
+        <div id="tab-wheel" class="tab-content active">
+            <div class="wheel-card">
+                <h2>🎰 Колесо Удачи</h2>
+                <p style="color: var(--text-secondary); font-size: 14px;">Крути рулетку и получай редкие предметы!</p>
+                <button class="spin-btn" onclick="spinWheel()">Крутить (100 🪙)</button>
+                
+                <div class="drop-result" id="dropResult">
+                    Нажми кнопку, чтобы сделать первый прокрут!
+                </div>
+            </div>
+        </div>
+
+        <!-- Вкладка 2: Инвентарь -->
+        <div id="tab-inventory" class="tab-content">
+            <h2>🎒 Инвентарь</h2>
+            <div class="inventory-grid" id="inventoryGrid">
+                <!-- Сюда падают предметы -->
+            </div>
+        </div>
+
+        <!-- Вкладка 3: Рынок -->
+        <div id="tab-market" class="tab-content" style="text-align: center; padding-top: 40px;">
+            <h2>🏪 Рынок</h2>
+            <p style="color: var(--text-secondary); margin-top: 20px;">🚧 Этот раздел находится в разработке. Скоро здесь можно будет торговать предметами с другими игроками!</p>
+        </div>
+
+        <!-- Вкладка 4: Магазин (Донат) -->
+        <div id="tab-shop" class="tab-content">
+            <h2>💳 Магазин монет</h2>
+            <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 15px;">Выберите пакет пополнения:</p>
+            <div class="donate-grid">
+                <div class="donate-card">
+                    <div class="donate-amount">100 монет</div>
+                    <div style="font-size: 13px; color: var(--text-secondary);">35 грн</div>
+                    <button class="buy-btn" onclick="openDonate(100, 35)">Купить</button>
+                </div>
+                <div class="donate-card">
+                    <div class="donate-amount">500 монет</div>
+                    <div style="font-size: 13px; color: var(--text-secondary);">150 грн</div>
+                    <button class="buy-btn" onclick="openDonate(500, 150)">Купить</button>
+                </div>
+                <div class="donate-card">
+                    <div class="donate-amount">1,000 монет</div>
+                    <div style="font-size: 13px; color: var(--text-secondary);">280 грн</div>
+                    <button class="buy-btn" onclick="openDonate(1000, 280)">Купить</button>
+                </div>
+                <div class="donate-card">
+                    <div class="donate-amount">5,000 монет</div>
+                    <div style="font-size: 13px; color: var(--text-secondary);">1,250 грн</div>
+                    <button class="buy-btn" onclick="openDonate(5000, 1250)">Купить</button>
+                </div>
+                <div class="donate-card">
+                    <div class="donate-amount">10,000 монет</div>
+                    <div style="font-size: 13px; color: var(--text-secondary);">2,400 грн</div>
+                    <button class="buy-btn" onclick="openDonate(10000, 2400)">Купить</button>
+                </div>
+                <div class="donate-card">
+                    <div class="donate-amount">20,000 монет</div>
+                    <div style="font-size: 13px; color: var(--text-secondary);">4,500 грн</div>
+                    <button class="buy-btn" onclick="openDonate(20000, 4500)">Купить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно оплаты по QR -->
+    <div class="modal" id="donateModal">
+        <div class="modal-content">
+            <div class="success-checkmark" id="successCheck">✅</div>
+            <h3 id="modalTitle">Оплата по QR</h3>
+            <p id="modalDesc" style="font-size: 13px; color: var(--text-secondary);">Отсканируйте QR-код для оплаты</p>
+            
+            <div class="qr-box" onclick="confirmPayment()">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=FakePayment" alt="QR Code">
+            </div>
+            
+            <p style="font-size: 11px; color: var(--text-secondary);">Нажмите на QR-код, чтобы имитировать успешную оплату</p>
+            <button class="buy-btn" style="background: #64748b; margin-top: 10px;" onclick="closeModal()">Закрыть</button>
+        </div>
+    </div>
+
+    <!-- Нижнее меню -->
+    <nav>
+        <button class="nav-btn active" onclick="switchTab('wheel', this)"><span>🎡</span>Рулетка</button>
+        <button class="nav-btn" onclick="switchTab('inventory', this)"><span>🎒</span>Инвентарь</button>
+        <button class="nav-btn" onclick="switchTab('market', this)"><span>🏪</span>Рынок</button>
+        <button class="nav-btn" onclick="switchTab('shop', this)"><span>💳</span>Магазин</button>
+    </nav>
+
+    <script>
+        let tg = window.Telegram.WebApp;
+        tg.expand();
+
+        let balance = 500;
+        let inventory = [];
+        let currentDonateAmount = 0;
+
+        const itemPool = [
+            { name: "Ржавый меч", rarity: "Обычный", rarityClass: "rarity-common", basePrice: 40 },
+            { name: "Деревянный щит", rarity: "Обычный", rarityClass: "rarity-common", basePrice: 50 },
+            { name: "Серебряный кинжал", rarity: "Редкий", rarityClass: "rarity-rare", basePrice: 150 },
+            { name: "Магический посох", rarity: "Редкий", rarityClass: "rarity-rare", basePrice: 200 },
+            { name: "Золотая броня", rarity: "Эпический", rarityClass: "rarity-epic", basePrice: 600 },
+            { name: "Кристалл дракона", rarity: "Легендарный", rarityClass: "rarity-legendary", basePrice: 2500 }
+        ];
+
+        function updateUI() {
+            document.getElementById('balance').innerText = balance;
+        }
+
+        function switchTab(tabId, btn) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById('tab-' + tabId).classList.add('active');
+            btn.classList.add('active');
+            
+            if (tabId === 'inventory') {
+                renderInventory();
+            }
+        }
+
+        function spinWheel() {
+            if (balance < 100) {
+                alert("Недостаточно монет! Пополните баланс в магазине.");
+                return;
+            }
+            balance -= 100;
+            updateUI();
+
+            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+
+            let randomItem = itemPool[Math.floor(Math.random() * itemPool.length)];
+            let uniqueId = Math.floor(1000 + Math.random() * 9000);
+            let itemPrice = Math.round(randomItem.basePrice * (0.8 + Math.random() * 0.4));
+
+            let droppedItem = {
+                id: uniqueId,
+                name: randomItem.name,
+                rarity: randomItem.rarity,
+                rarityClass: randomItem.rarityClass,
+                price: itemPrice
+            };
+
+            inventory.push(droppedItem);
+
+            document.getElementById('dropResult').innerHTML = `
+                🎉 <b>Вам выпало:</b> ${droppedItem.name} (${droppedItem.rarity})<br>
+                🔢 Номер: #${droppedItem.id} | 💵 Цена: ${droppedItem.price} 🪙
+            `;
+        }
+
+        function renderInventory() {
+            let grid = document.getElementById('inventoryGrid');
+            if (inventory.length === 0) {
+                grid.innerHTML = '<p style="color: var(--text-secondary); grid-column: span 2; text-align: center;">Ваш инвентарь пуст. Крутите рулетку!</p>';
+                return;
+            }
+
+            grid.innerHTML = '';
+            inventory.forEach((item, index) => {
+                let card = document.createElement('div');
+                card.className = `item-card ${item.rarityClass}`;
+                card.innerHTML = `
+                    <div>
+                        <div class="item-name">${item.name}</div>
+                        <div class="item-info">Редкость: ${item.rarity}<br>№${item.id}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #38bdf8;">${item.price} 🪙</div>
+                        <button class="sell-btn" onclick="sellItem(${index})">Продать</button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function sellItem(index) {
+            let item = inventory[index];
+            balance += item.price;
+            inventory.splice(index, 1);
+            updateUI();
+            renderInventory();
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        }
+
+        function openDonate(coins, uah) {
+            currentDonateAmount = coins;
+            document.getElementById('modalTitle').innerText = `Покупка: ${coins} монет`;
+            document.getElementById('modalDesc').innerText = `К оплате: ${uah} грн`;
+            document.getElementById('successCheck').style.display = 'none';
+            document.querySelector('.qr-box').style.display = 'inline-block';
+            document.getElementById('donateModal').style.display = 'flex';
+        }
+
+        function confirmPayment() {
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            
+            document.querySelector('.qr-box').style.display = 'none';
+            document.getElementById('successCheck').style.display = 'block';
+            document.getElementById('modalTitle').innerText = 'Спасибо за покупку!';
+            document.getElementById('modalDesc').innerText = `На ваш баланс зачислено ${currentDonateAmount} монет!`;
+
+            balance += currentDonateAmount;
+            updateUI();
+
+            setTimeout(() => {
+                closeModal();
+            }, 2000);
+        }
+
+        function closeModal() {
+            document.getElementById('donateModal').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
